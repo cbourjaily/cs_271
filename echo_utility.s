@@ -30,10 +30,6 @@ get_str_len:
   /* Increment length count */
   addq $1, %rdx  /* ++rdx */
   jmp get_str_len_done
-
-  /* Increment length count */
-  addq $1, %rdx  /* ++rdx */
-  jmp get_str_len
 get_str_len_done:
 
 
