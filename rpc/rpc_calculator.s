@@ -121,6 +121,11 @@ parse_loop:	/* Iterates through the strings and extracts values */
 	jmp parse_error		# Jumps to parse error if token is neither an integer nor known operator
 
 
+
+push_integer:
+
+
+
 do_addition:
 
 
@@ -142,10 +147,7 @@ parse_error:
 	movq stderr(%rip), %rdi
 	leaq parse_error_fmt(%rip), %rsi
 	movq %r13, %rdx
-
-
-	movq %rdx, %rcx
-	movq %rsi, %rdx
+	movq %rdi, %rcx
 
 	xor %rax, %rax
 	call fprintf
