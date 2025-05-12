@@ -103,22 +103,22 @@ parse_loop:	/* Iterates through the strings and extracts values */
         lea op_minus(%rip), %rdi         # Loads the minus operator into %rdi
         call strcmp             # Calls the C function to compare the token and the minus operator
         test %rax, %rax         # Tests if %rax is equal
-        je do_addition          # If equal, the token matches the plus operator; jump to do_addition
+        je do_subtraction       # If equal, the token matches the plus operator; jump to do_addition
 
         /* Check whether the token is a multiply operator (if it is not a plus operator) */
         lea op_multiply(%rip), %rdi         # Loads the multiply operator into %rdi
         call strcmp             # Calls the C function to compare the token and the multiply operator
         test %rax, %rax         # Tests if %rax is equal
-        je do_addition          # If equal, the token matches the plus operator; jump to do_addition
+        je do_multiplication    # If equal, the token matches the plus operator; jump to do_addition
 
         /* Check whether the token is a divide operator (if it is not a plus operator) */
         lea op_divide(%rip), %rdi         # Loads the divide operator into %rdi
         call strcmp             # Calls the C function to compare the token and the divide operator
         test %rax, %rax         # Tests if %rax is equal
-        je do_addition          # If equal, the token matches the plus operator; jump to do_addition
+        je do_division          # If equal, the token matches the plus operator; jump to do_addition
 
-	/* If the token is neither an integer nor a known operator, jump to parse_error */
-	jmp parse_error
+	inc %15			# Increments the index register
+	jmp parse_error		# Jumps to parse error if token is neither an integer nor known operator
 
 
 do_addition:
@@ -164,39 +164,39 @@ print_result:
 
 
 exit_with_error:
-/* restores callee-saved registers in case where an error occured */
-popq %r15
-popq %r14
-popq %r13
-popq %r12
-popq %rbx
-movq %rbp, %rsp
-popq %rbp
+	/* restores callee-saved registers in case where an error occured */
+	popq %r15
+	popq %r14
+	popq %r13
+	popq %r12
+	popq %rbx
+	movq %rbp, %rsp
+	popq %rbp
 
-movq $EXIT_ERROR, %rdi		# Exit code 1 for error
+	movq $EXIT_ERROR, %rdi		# Exit code 1 for error
 
-/* aligning the stack */
-movq %rsp, %r15
-andq $-16, %rsp
-call exit	 	# Calls the C library standard exit command
+	/* aligning the stack */
+	movq %rsp, %r15
+	andq $-16, %rsp
+	call exit	 	# Calls the C library standard exit command
 
 
 exit_with_success:
-/* restores callee-saved registers in case operations completed successfully */
-popq %r15
-popq %r14
-popq %r13
-popq %r12
-popq %rbx
-movq %rbp, %rsp
-popq %rbp
+	/* restores callee-saved registers in case operations completed successfully */
+	popq %r15
+	popq %r14
+	popq %r13
+	popq %r12
+	popq %rbx
+	movq %rbp, %rsp
+	popq %rbp
 
-xorq %rdi, %rdi		# Exit code 0 for success
+	xorq %rdi, %rdi		# Exit code 0 for success
 
-/* aligning the stack */
-movq %rsp, %r15
-andq $-16, %rsp
-call exit	 	# Calls the C library standard exit command
+	/* aligning the stack */
+	movq %rsp, %r15
+	andq $-16, %rsp
+	call exit	 	# Calls the C library standard exit command
 
 
 
