@@ -2,7 +2,15 @@
 # 934-315-400
 
 
-.equ EXIT_ERROR, 1	/* Equate directive for error exit code */
+/* === Constants === */
+.equ EXIT_ERROR, 1	# Equate directive for error exit code
+
+
+/* === External C library functions used === */
+.extern strtoll		# Converts a string to a long long (64-bit signed integer)
+.extern strcmp		# Compares two strings
+.extern fprintf		# Prints formatted output to a stream (stderr/stdout)
+.extern exit		# Exits the program
 
 
 .section .rodata
@@ -32,13 +40,13 @@ reduction_error_operators_fmt:
 .globl main
 .type main, @function
 main:
-	pushq %rbp	/* Save the base pointer */
-	movq %rsp, %rbp	/* Set base pointer for the current stack */
+	pushq %rbp		# Saves the base pointer
+	movq %rsp, %rbp		# Sets base pointer for the current stack
 
-	/* capture argc and argv in callee-saved registers */
+	/* Captures argc and argv in callee-saved registers */
 	movq %rdi, %r14			# Save argc in %r14
 	movq %rsi, %rbx			# Save argv in %rbx
-        movq (%rbx), %r13        	# save argv[0] in %r13 */
+        movq (%rbx), %r13        	# save argv[0] in %r13
 
 
 	/* Save callee-saved registers */
@@ -49,25 +57,32 @@ main:
 	pushq %r15
 
 
-	leaq -8(%rsp), %rsp	# ensure that %rsp is 16-byte aligned */
+	leaq -8(%rsp), %rsp	# Ensures that %rsp is 16-byte aligned
 
-	movq %rsp, %r12		#  initialize stack base pointer for operands
+	movq %rsp, %r12		#  Initializes base pointer for operands stack
 
 check_for_args:
-	cmpq $1, %r14			/* if true, only argc is in the register */
-	jle exit_with_success		/* jump to exit if above is true */
+	cmpq $1, %r14			# if true, only argc is in the register
+	jle exit_with_success		# jump to exit if above is true
+
+	movq $1, %r15			# Start at argv[1]
+
+parse_loop:	/* iterates through the strings and extracts values */
+	cmpq %r15, %r14		# Checks if there are arguments left to parse
 
 
-parse_loop:
 
 
 parse_integer:
 
 
+
 parse_operator:
 
 
+
 do_addition:
+
 
 
 
@@ -109,12 +124,12 @@ popq %rbx
 movq %rbp, %rsp
 popq %rbp
 
-movq $EXIT_ERROR, %rdi	/* exit code 1 for error */
+movq $EXIT_ERROR, %rdi		# Exit code 1 for error
 
 /* aligning the stack */
 movq %rsp, %r15
 andq $-16, %rsp
-call exit	/* calling the C library standard exit */
+call exit	 	# Calls the C library standard exit command
 
 
 exit_with_success:
@@ -127,10 +142,27 @@ popq %rbx
 movq %rbp, %rsp
 popq %rbp
 
-xorq %rdi, %rdi		/* exit code 0 for success */
+xorq %rdi, %rdi		# Exit code 0 for success
 
 /* aligning the stack */
 movq %rsp, %r15
 andq $-16, %rsp
-call exit	/* calling the C library standard exit */
+call exit	 	# Calls the C library standard exit command
 
+
+
+# ============ Notes =====================
+# Notes on argc and argv
+#
+# When main is called, the System V ABI passes:
+#   %rdi = argc (number of command-line arguments, including the program name)
+#   %rsi = argv (pointer to an array of strings; each string is one argument)
+#
+# argv[0] is the program name (e.g., "./rpc")
+# argv[1] to argv[argc - 1] are the actual input tokens (numbers or operators)
+#
+# In this program:
+#   - argc is saved into %r14
+#   - argv is saved into %rbx
+#   - argv[0] (program name) is saved into %r13 for use in error messages
+# ========================================
