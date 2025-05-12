@@ -3,7 +3,6 @@
 
 
 .equ EXIT_ERROR, 1	/* Equate directive for error exit code */
-.equ SYS_EXIT, 60	/* Equate directive for exit syscall */
 
 
 .section .rodata
@@ -33,21 +32,29 @@ reduction_error_operators_fmt:
 .globl main
 .type main, @function
 main:
-	push %rbp	/* Save the base pointer */
-	mov %rsp, %rbp	/* Set base pointer for the current stack */
+	pushq %rbp	/* Save the base pointer */
+	movq %rsp, %rbp	/* Set base pointer for the current stack */
+
+/* capture argc and argv in callee-saved registers */
+movq %rdi, %r14			# Save argv
+movq %rsi, %rbx			# Saave argc
 
 /* Save callee-saved registers */
-	push %rbx
-	push %r12
-	push %r13
-	push %r14
-	push %r15
+	pushq %rbx
+	pushq %r12
+	pushq %r13
+	pushq %r14
+	pushq %r15
 
-	lea -8(%rsp), %rsp	/* Ensure that %rsp is aligned to 16-byte aligned */
+	movq (%rbx), %r13	/* retrieve argv[0] and save it in %r13 */
+
+	leaq -8(%rsp), %rsp	/* ensure that %rsp is aligned to 16-byte aligned */
+
+	movq %rsp, %r12		/* initialize stack base pointer for operands of the calculator */
 
 check_for_args:
-	cmp $1, %rdi		/* if true, only argc is in the register */
-	je exit			/* jump to exit if above is true */
+	cmpq $1, %r14		/* if true, only argc is in the register */
+	jle exit_with_success		/* jump to exit if above is true */
 
 
 parse_loop:
@@ -92,31 +99,37 @@ print_result:
 
 
 exit_with_error:
-/* Restores callee-saved registers in case where an error occured */
-pop %r15
-pop %r14
-pop %r13
-pop %r12
-pop %rbx
-mov %rbp, %rsp
-pop %rbp
+/* restores callee-saved registers in case where an error occured */
+popq %r15
+popq %r14
+popq %r13
+popq %r12
+popq %rbx
+movq %rbp, %rsp
+popq %rbp
 
-mov $SYS_EXIT, %rax	/* syscall 60 for exit */
-mov $EXIT_ERROR, %rdi	/* exit code 1 for error */
-syscall
+movq $EXIT_ERROR, %rdi	/* exit code 1 for error */
+
+/* aligning the stack */
+movq %rsp, %r15
+andq $-16, %rsp
+call exit	/* calling the C library standard exit */
 
 
+exit_with_success:
+/* restores callee-saved registers in case operations completed successfully */
+popq %r15
+popq %r14
+popq %r13
+popq %r12
+popq %rbx
+movq %rbp, %rsp
+popq %rbp
 
-exit_success:
-/* Rostores callee-saved registers in case operations completed successfully */
-pop %r15
-pop %r14
-pop %r13
-pop %r12
-pop %rbx
-mov %rbp, %rsp
-pop %rbp
+xorq %rdi, %rdi		/* exit code 0 for success */
 
-mov $SYS_EXIT, %rax	/* syscall for 60 exit */
-xor %rdi, %rdi		/* exit code 0 */
-syscall
+/* aligning the stack */
+movq %rsp, %r15
+andq $-16, %rsp
+call exit	/* calling the C library standard exit */
+
