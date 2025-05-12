@@ -35,25 +35,26 @@ main:
 	pushq %rbp	/* Save the base pointer */
 	movq %rsp, %rbp	/* Set base pointer for the current stack */
 
-/* capture argc and argv in callee-saved registers */
-movq %rdi, %r14			# Save argv
-movq %rsi, %rbx			# Saave argc
+	/* capture argc and argv in callee-saved registers */
+	movq %rdi, %r14			# Save argc in %r14
+	movq %rsi, %rbx			# Save argv in %rbx
+        movq (%rbx), %r13        	# save argv[0] in %r13 */
 
-/* Save callee-saved registers */
+
+	/* Save callee-saved registers */
 	pushq %rbx
 	pushq %r12
 	pushq %r13
 	pushq %r14
 	pushq %r15
 
-	movq (%rbx), %r13	/* retrieve argv[0] and save it in %r13 */
 
-	leaq -8(%rsp), %rsp	/* ensure that %rsp is aligned to 16-byte aligned */
+	leaq -8(%rsp), %rsp	# ensure that %rsp is 16-byte aligned */
 
-	movq %rsp, %r12		/* initialize stack base pointer for operands of the calculator */
+	movq %rsp, %r12		#  initialize stack base pointer for operands
 
 check_for_args:
-	cmpq $1, %r14		/* if true, only argc is in the register */
+	cmpq $1, %r14			/* if true, only argc is in the register */
 	jle exit_with_success		/* jump to exit if above is true */
 
 
