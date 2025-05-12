@@ -9,6 +9,7 @@
 /* === External C library functions used === */
 .extern strtoll		# Converts a string to a long long (64-bit signed integer)
 .extern strcmp		# Compares two strings
+.extern stderr		# 
 .extern fprintf		# Prints formatted output to a stream (stderr/stdout)
 .extern exit		# Exits the program
 
@@ -117,12 +118,14 @@ parse_loop:	/* Iterates through the strings and extracts values */
         test %rax, %rax         # Tests if %rax is equal
         je do_division          # If equal, the token matches the plus operator; jump to do_addition
 
-	inc %r15		# Increments the index register
 	jmp parse_error		# Jumps to parse error if token is neither an integer nor known operator
 
 
 
 push_integer:
+	push %rax
+	inc %r15
+	jmp parse_loop
 
 
 
@@ -130,17 +133,33 @@ do_addition:
 
 
 
+        inc %r15
+        jmp parse_loop
+
 
 do_subtraction:
 
+
+
+        inc %r15
+        jmp parse_loop
 
 
 do_multiplication:
 
 
 
+
+        inc %r15
+        jmp parse_loop
+
+
 do_division:
 
+
+
+        inc %r15
+        jmp parse_loop
 
 
 parse_error:
