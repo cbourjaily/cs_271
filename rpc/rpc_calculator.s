@@ -2,6 +2,10 @@
 # 934-315-400
 
 
+.equ EXIT_ERROR, 1	/* Equate directive for error exit code */
+.equ SYS_EXIT, 60	/* Equate directive for exit syscall */
+
+
 .section .rodata
 parse_error_fmt:
 	/* Format string for parse errors */
@@ -87,4 +91,32 @@ print_result:
 
 
 
-exit:
+exit_with_error:
+/* Restores callee-saved registers in case where an error occured */
+pop %r15
+pop %r14
+pop %r13
+pop %r12
+pop %rbx
+mov %rbp, %rsp
+pop %rbp
+
+mov $SYS_EXIT, %rax	/* syscall 60 for exit */
+mov $EXIT_ERROR, %rdi	/* exit code 1 for error */
+syscall
+
+
+
+exit_success:
+/* Rostores callee-saved registers in case operations completed successfully */
+pop %r15
+pop %r14
+pop %r13
+pop %r12
+pop %rbx
+mov %rbp, %rsp
+pop %rbp
+
+mov $SYS_EXIT, %rax	/* syscall for 60 exit */
+xor %rdi, %rdi		/* exit code 0 */
+syscall
