@@ -166,7 +166,7 @@ parse_error:
 	movq stderr(%rip), %rdi
 	leaq parse_error_fmt(%rip), %rsi
 	movq %r13, %rdx
-	movq %rdi, %rcx
+	movq (%rbx, %r15, 8), %rcx
 
 	xor %rax, %rax
 	call fprintf
