@@ -68,7 +68,8 @@ check_for_args:
 
 	movq $1, %r15			# Sets %r15 to start at argv[1]
 
-parse_loop:	/* Iterates through the strings and extracts values */
+parse_loop:
+	/* Iterates through the strings and extracts values */
 	cmpq %r15, %r14		# Checks if there are arguments left to parse
 	je validate_stack	# Exits loop if argc has been reached
 
@@ -94,28 +95,44 @@ parse_loop:	/* Iterates through the strings and extracts values */
 	/* Moves the token to %rsi */
 	movq %rdi, %rsi		# %rsi now holds the token being compared
 
-       /* Check whether the token is the plus operator (if it is not an integer) */
+       /* Check for the plus operator (if the token is not an integer) */
 	lea op_plus(%rip), %rdi		# Loads the plus operator into %rdi
+
+	/* Aligning the stack */
+	movq %rsp, %r10		# %r10 is used as a temporary register to save %rsp
+	andq $-16, %rsp
 	call strcmp		# Calls the C function to compare the token and the plus operator
-	test %rax, %rax		# Tests if %rax is equal
+	test %eax, %eax		# Tests if %rax is equal
 	je do_addition		# If equal, the token matches the plus operator; jump to do_addition
 
-	/* Check whether the token is a minus operator (if it is not a plus operator) */
+	/* Check for the minus operator (if the token is not a plus operator) */
         lea op_minus(%rip), %rdi         # Loads the minus operator into %rdi
+        
+        /* Aligning the stack */
+	movq %rsp, %r10		# %r10 is used as a temporary register to save %rsp
+	andq $-16, %rsp
         call strcmp             # Calls the C function to compare the token and the minus operator
-        test %rax, %rax         # Tests if %rax is equal
+        test %eax, %eax         # Tests if %rax is equal
         je do_subtraction       # If equal, the token matches the plus operator; jump to do_addition
 
-        /* Check whether the token is a multiply operator (if it is not a plus operator) */
+        /* Check for the multiply operator (if the token is not a plus or minus) */
         lea op_multiply(%rip), %rdi         # Loads the multiply operator into %rdi
+        
+        /* Aligning the stack */
+	movq %rsp, %r10		# %r10 is used as a temporary register to save %rsp
+	andq $-16, %rsp
         call strcmp             # Calls the C function to compare the token and the multiply operator
-        test %rax, %rax         # Tests if %rax is equal
+        test %eax, %eax         # Tests if %rax is equal
         je do_multiplication    # If equal, the token matches the plus operator; jump to do_addition
 
-        /* Check whether the token is a divide operator (if it is not a plus operator) */
+        /* Check for divide operator (if the token is neither an integer, plus, minus or multiply) */
         lea op_divide(%rip), %rdi         # Loads the divide operator into %rdi
+        
+        /* Aligning the stack */
+	movq %rsp, %r10		# %r10 is used as a temporary register to save %rsp
+	andq $-16, %rsp
         call strcmp             # Calls the C function to compare the token and the divide operator
-        test %rax, %rax         # Tests if %rax is equal
+        test %eax, %eax         # Tests if %rax is equal
         je do_division          # If equal, the token matches the plus operator; jump to do_addition
 
 	jmp parse_error		# Jumps to parse error if token is neither an integer nor known operator
