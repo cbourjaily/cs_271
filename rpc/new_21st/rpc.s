@@ -58,7 +58,6 @@ Result_format:
 # Exits the program with a given exit code
 .extern exit		
 
-
 /* === Program entry point (linked with C library) === */ 
 
 .section .text
@@ -85,17 +84,38 @@ parsing_loop:
 	# Increments the current arg, as in argv[0]->argv[1]
 	leaq 8(%rsi), %rsi
 	# Loads the next argv address into %r12
-	movq(%rsi), %r12
+	movq (%rsi), %r12
 
 	# Check for null byte
 	cmpq $0, %r12
-	je print_result
-	
-/* If we got this far, we still have a working string. */
+#	je print_result                                 # NERFED FOR NOW
+
+/* If we have got this far, we still have a working string. */
+
 add_compare:
+/* Use strcmp to check if the current token is op_plus. If not, move along. If so, jump to perform operation. */
+/* If we identify +, we will jump to an operation_add: Otherwise, the token will proceed. */
+/* Save callee-saved registers and align the stack before the function call */ 
 
-
-
+# Save the pointer to the previous stack frame
+pushq %rbp
+# Copy the stack pointer to the base pointer for a fixed reference point
+movq %rsp, %rbp
+# push callee saved registers
+push %r14
+push %r15
+push %r12		# Next argv address
+leaq op_plus(%rip), %rdi	# Loading the argument for strcmp 
+movq %rsp, %r13    /* Move rsp into a free callee-saved register */
+andq $-16, %rsp    /* Realign rsp; -16 = 0xfffffffffffffff0 */
+call strcmp	   # Maybe the result is in %rax?
+movq %r13, %rsp    /* Restore stack pointer */
+pop %r12
+pop %r15
+pop %r14
+pop %rbp
+cmp $0, %rax
+je operation_add
 
 
 
