@@ -70,10 +70,6 @@ Result_format:
 /* argc is in %rdi. argv is in %rsi. */
 
 main:
-	# Saving argc to %r14 for now, just in case
-	movq %rdi, %r14
-	# Saving argv in %r15 for now, just in case.
-	movq %rsi, %r15
 	# Checks if there is more than 1 argument in %rdi.
 	cmp $1, %rdi			
 
@@ -97,27 +93,21 @@ add_compare:
 /* If we identify +, we will jump to an operation_add: Otherwise, the token will proceed. */
 /* Save callee-saved registers and align the stack before the function call */ 
 
-# Save the pointer to the previous stack frame
-pushq %rbp
-# Copy the stack pointer to the base pointer for a fixed reference point
-movq %rsp, %rbp
-# push callee saved registers
-push %r14
-push %r15
-push %r12		# Next argv address
-leaq op_plus(%rip), %rdi	# Loading the argument for strcmp 
+push %rsi		# Save argv pointer
 movq %rsp, %r13    /* Move rsp into a free callee-saved register */
+
 andq $-16, %rsp    /* Realign rsp; -16 = 0xfffffffffffffff0 */
-call strcmp	   # Maybe the result is in %rax?
+
+leaq op_plus(%rip), %rdi	# Loading the 1st argument (op_plus) for strcmp 
+mov %r12, %rsi 		# load the 2nd argument (current token) into %rsi 
+call strcmp	   # The result is in %rax?
+
 movq %r13, %rsp    /* Restore stack pointer */
-pop %r12
-pop %r15
-pop %r14
-pop %rbp
+pop %rsi	   /* Restore the argv pointer */
 cmp $0, %rax
 je operation_add
 
-
+sub_compare:
 
 
 
@@ -143,5 +133,7 @@ exit_with_success:
 
 
 
-
+operation_add:                 /* A test of the emergency operation_add system */
+	movq $7, %rdi        # exit code 1 = "matched +"
+	call exit
 
