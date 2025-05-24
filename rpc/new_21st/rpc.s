@@ -75,10 +75,15 @@ endptr:
 
 main:
 	# Checks if there is more than 1 argument in %rdi.
-	cmp $1, %rdi			
-
+	cmp $1, %rdi
 	# If only one arg, it's just the file name. Exit program.
-	jle exit_with_success		
+	jle exit_with_success			
+
+	movq (%rsi), %rax		# Load argv[0] (program name) to %rax
+	movq %rax, progname(%rip)	# Save to global variable
+	xor %rax, %rax			
+
+
 
 parsing_loop:
 	# Increments the current arg, as in argv[0]->argv[1]
@@ -229,6 +234,23 @@ operation_divide:		/* A test of divide_compare */
 test_num_conversion:
 	movq %rax, %rdi
 	call exit
+
+
+parse_error:
+mov stderr(%rip), %rdi
+mov $parse_error_fmt, %rsi
+mov progname(%rip), %rdx
+mov %r12, %rcx
+
+xor %rax, %rax
+
+call fprintf
+
+
+
+exit_with_error:
+
+
 
 
 exit_with_success:
