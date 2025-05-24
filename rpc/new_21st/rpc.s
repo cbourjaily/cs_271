@@ -32,32 +32,22 @@ Result_format:
 
 /* === Register Calling Convention Notes === */
 
-# %rdi: 1st arg (argc), %rsi: 2nd arg (argv)
-# %rax: return value
-
-
-# Caller-saved: %rax, %rcx, %rdx, %rsi, %rdi, %r8–%r11
-# Callee-saved: %rbx, %rbp, %r12–%r15
-
 /* According to the System V ABI, the stack is supposed to be aligned to a multiple of */
 /* 16 bytes immediately before every function call. “Aligned to 16 bytes” means that */
 /* the address of the stack pointer (%rsp) should be a multiple of 16. */
 
 
-
 /* === Constants === */
 .equ EXIT_ERROR, 1	# Equate directive for error exit code
 
-
-
 /* === External C library functions used === */
 
-# Converts string to 64-bit integer
-.extern strtoll		
-
 # Compares two strings
-# Returns 0 if the strings are the same, else non-zero. 
+# Returns 0 if s1 == s2; -val if s1 < s2; +val if s1 > s2 
 .extern strcmp		
+
+# mConverts string to 64-bit integer
+.extern strtoll		
 
 # Pointer to standard error output stream (FILE*)
 .extern stderr		# Standard error
@@ -75,24 +65,34 @@ Result_format:
 .globl main
 .type main, @function
 
+/* Caller-saved: %rax, %rcx, %rdx, %rsi, %rdi, %r8–%r11 */
+/* Callee-saved: %rbx, %rbp, %r12–%r15 */
 /* Integer/pointer argument registers: %rdi, %rsi, %rdx, %rcx, %r8, %r9 */
 /* argc is in %rdi. argv is in %rsi. */
 
 main:
+	# Saving argc to %r14 for now, just in case
+	movq %rdi, %r14
+	# Saving argv in %r15 for now, just in case.
+	movq %rsi, %r15
 	# Checks if there is more than 1 argument in %rdi.
 	cmp $1, %rdi			
 
 	# If only one arg, it's just the file name. Exit program.
 	jle exit_with_success		
 
-
-
-
-
-
-
 parsing_loop:
+	# Increments the current arg, as in argv[0]->argv[1]
+	leaq 8(%rsi), %rsi
+	# Loads the next argv address into %r12
+	movq(%rsi), %r12
 
+	# Check for null byte
+	cmpq $0, %r12
+	je print_result
+	
+/* If we got this far, we still have a working string. */
+add_compare:
 
 
 
