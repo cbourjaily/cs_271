@@ -29,6 +29,9 @@ Result_format:
 	result_fmt:	.asciz "%lld\n"
 
 
+endptr:
+	.quad 0					# EXPERIMENTAL GLOBAL VARIABLE
+
 
 /* === Register Calling Convention Notes === */
 
@@ -39,6 +42,7 @@ Result_format:
 
 /* === Constants === */
 .equ EXIT_ERROR, 1	# Equate directive for error exit code
+
 
 /* === External C library functions used === */
 
@@ -93,82 +97,111 @@ add_compare:
 /* If we identify +, we will jump to an operation_add: Otherwise, the token will proceed. */
 /* Save callee-saved registers and align the stack before the function call */ 
 
-push %r12		# Save the value of argv (current token) on the stack
-push %rsi		# Save argv pointer
-movq %rsp, %r13		# Move rsp into a free callee-saved register 
+	push %r12			# Save the value of argv (current token) on the stack
+	push %rsi			# Save argv pointer
+	movq %rsp, %r13			# Move %rsp into a free callee-saved register 
 
-andq $-16, %rsp		# Realign rsp; -16 = 0xfffffffffffffff0 
+	andq $-16, %rsp			# Realign %rsp; -16 = 0xfffffffffffffff0 
 
-leaq op_add(%rip), %rdi		# Loading the 1st argument (op_add) for strcmp 
-mov %r12, %rsi			# load the 2nd argument (current token) into %rsi 
-call strcmp			# The result is in %rax
+	leaq op_add(%rip), %rdi		# Loading the 1st argument (op_add) for strcmp 
+	mov %r12, %rsi			# load the 2nd argument (current token) into %rsi 
+	call strcmp			# The result is in %rax
 
-movq %r13, %rsp		# Restore stack pointer 
-pop %rsi		# Restore the argv pointer 
-pop %r12		# Restore argv value
-cmp $0, %rax
-je operation_add
+	movq %r13, %rsp			# Restore stack pointer 
+	pop %rsi			# Restore the argv pointer 
+	pop %r12			# Restore argv value
+	cmp $0, %rax
+	je operation_add
 
 
 sub_compare:
 /* Reusing the logic from add_compare */ 
 
-push %r12		# Save the value of argv (current token) on the stack
-push %rsi		# Save argv pointer
-movq %rsp, %r13		# Move rsp into a free callee-saved register 
+	push %r12			# Save the value of argv (current token) on the stack
+	push %rsi			# Save argv pointer
+	movq %rsp, %r13			# Move %rsp into a free callee-saved register 
 
-andq $-16, %rsp		# Realign rsp; -16 = 0xfffffffffffffff0 
+	andq $-16, %rsp			# Realign %rsp; -16 = 0xfffffffffffffff0 
 
-leaq op_sub(%rip), %rdi	# Loading the 1st argument (op_sub) for strcmp 
-mov %r12, %rsi			# load the 2nd argument (current token) into %rsi 
-call strcmp			# The result is in %rax
+	leaq op_sub(%rip), %rdi		# Loading the 1st argument (op_sub) for strcmp 
+	mov %r12, %rsi			# load the 2nd argument (current token) into %rsi 
+	call strcmp			# The result is in %rax
 
-movq %r13, %rsp		# Restore stack pointer 
-pop %rsi		# Restore the argv pointer 
-pop %r12		# Restore argv value
-cmp $0, %rax
-je operation_subtract
+	movq %r13, %rsp			# Restore stack pointer 
+	pop %rsi			# Restore the argv pointer 
+	pop %r12			# Restore argv value
+	cmp $0, %rax
+	je operation_subtract
 
 
 multiply_compare:
 /* Reusing the logic from add_compare */ 
 
-push %r12		# Save the value of argv (current token) on the stack
-push %rsi		# Save argv pointer
-movq %rsp, %r13		# Move rsp into a free callee-saved register 
+	push %r12			# Save the value of argv (current token) on the stack
+	push %rsi			# Save argv pointer
+	movq %rsp, %r13			# Move %rsp into a free callee-saved register 
 
-andq $-16, %rsp		# Realign rsp; -16 = 0xfffffffffffffff0 
+	andq $-16, %rsp			# Realign %rsp; -16 = 0xfffffffffffffff0 
 
-leaq op_multiply(%rip), %rdi	# Loading the 1st argument (op_sub) for strcmp 
-mov %r12, %rsi			# load the 2nd argument (current token) into %rsi 
-call strcmp			# The result is in %rax
+	leaq op_multiply(%rip), %rdi	# Loading the 1st argument (op_sub) for strcmp 
+	mov %r12, %rsi			# load the 2nd argument (current token) into %rsi 
+	call strcmp			# The result is in %rax
 
-movq %r13, %rsp		# Restore stack pointer 
-pop %rsi		# Restore the argv pointer 
-pop %r12		# Restore argv value
-cmp $0, %rax
-je operation_multiply
+	movq %r13, %rsp			# Restore stack pointer 
+	pop %rsi			# Restore the argv pointer 
+	pop %r12			# Restore argv value
+	cmp $0, %rax
+	je operation_multiply
 
 
 divide_compare:
 /* Reusing the logic from add_compare */ 
 
-push %r12		# Save the value of argv (current token) on the stack
-push %rsi		# Save argv pointer
-movq %rsp, %r13		# Move rsp into a free callee-saved register 
+	push %r12			# Save the value of argv (current token) on the stack
+	push %rsi			# Save %argv pointer
+	movq %rsp, %r13			# Move %rsp into a free callee-saved register 
 
-andq $-16, %rsp		# Realign rsp; -16 = 0xfffffffffffffff0 
+	andq $-16, %rsp			# Realign %rsp; -16 = 0xfffffffffffffff0 
 
-leaq op_divide(%rip), %rdi	# Loading the 1st argument (op_sub) for strcmp 
-mov %r12, %rsi			# load the 2nd argument (current token) into %rsi 
-call strcmp			# The result is in %rax
+	leaq op_divide(%rip), %rdi	# Loading the 1st argument (op_sub) for strcmp 
+	mov %r12, %rsi			# load the 2nd argument (current token) into %rsi 
+	call strcmp			# The result is in %rax
 
-movq %r13, %rsp		# Restore stack pointer 
-pop %rsi		# Restore the argv pointer 
-pop %r12		# Restore argv value
-cmp $0, %rax
-je operation_divide
+	movq %r13, %rsp			# Restore stack pointer 
+	pop %rsi			# Restore the argv pointer 
+	pop %r12			# Restore argv value
+	cmp $0, %rax
+	je operation_divide
 
+
+num_convert:
+	
+        push %r12               	# Save the value of argv (current token) on the stack
+        push %rsi               	# Save argv pointer
+	movq %rsp, %r13			# Move %rsp into a free callee-saved register
+
+	andq $-16, %rsp			# Realign %rsp; -16 = 0xfffffffffffffff0 
+
+	movq %r12, %rdi			# Move argv value into %rdi (first argument)
+	leaq endptr(%rip), %rsi		# Set endptr for %rsi (second argument
+	xor %rdx, %rdx			# Set %rdx to zero
+	
+	call strtoll			# Converted integer in %rax
+
+	movq %r13, %rsp
+	pop %rsi
+	pop %r12
+
+#	movq endptr(%rip), %r8         # NERFED
+#	cmpq %r8, %r12                 # NERFED
+	
+	movq endptr(%rip), %r8     # Load endptr into %r8                         # NEW TEST CODE
+	movb (%r8), %r9b           # Load the byte pointed to by endptr
+	cmpb $0, %r9b              # Is it the null terminator?
+
+#	jne parse_error			# NERFED FOR NOW
+
+	jmp test_num_conversion
 
 operation_add:                 /* A test of the emergency operation_add system */
 	movq $6, %rdi        # exit code 6 = "matched +"
@@ -192,6 +225,10 @@ operation_divide:		/* A test of divide_compare */
 	mov $9, %rdi		# exit code 9 = "matched -"
 	call exit
 
+
+test_num_conversion:
+	movq %rax, %rdi
+	call exit
 
 
 exit_with_success:
