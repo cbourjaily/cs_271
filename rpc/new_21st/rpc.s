@@ -35,6 +35,10 @@ endptr:
 
 /* === Register Calling Convention Notes === */
 
+# Convention: %r10 is used to preserve %rsp across stack alignment boundaries
+# before calling variadic functions or those requiring 16-byte alignment.
+
+
 /* According to the System V ABI, the stack is supposed to be aligned to a multiple of */
 /* 16 bytes immediately before every function call. “Aligned to 16 bytes” means that */
 /* the address of the stack pointer (%rsp) should be a multiple of 16. */
@@ -208,8 +212,10 @@ num_convert:
 
 	jne parse_error			# If endptr is not null, token wasn't fully consumed by strtoll (invalid number)
 
+	push %rax			# Push the converted integer to the stack
+	jmp parsing_loop		
 
-	jmp test_num_conversion						#### TO BE REMOVED ####
+#	jmp test_num_conversion						#### TO BE REMOVED ####
 
 
 
@@ -217,6 +223,14 @@ operation_add:			/* A test of the emergency operation_add system */
 	movq $6, %rdi		# exit code 6 = "matched +"
 	call exit
 
+
+
+/* Next order of business is to get the operation_add up and running.
+And, I need to set up the test for if there is only 1 value on the stack.
+
+Also, remember that I need to make sure there are at least 2 values on the stack when he operation gets called.
+
+Remember the tip from the notes, about subtracting 16 in order to check for 2 integers. */ 
 
 
 operation_subtract:		/* A test of sub_compare */
@@ -236,9 +250,9 @@ operation_divide:		/* A test of divide_compare */
 	call exit
 
 
-test_num_conversion:
-	movq %rax, %rdi
-	call exit
+#test_num_conversion:
+#	movq %rax, %rdi				#### JUNK JUNK ####
+#	call exit
 
 
 parse_error:
