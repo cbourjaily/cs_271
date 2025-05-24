@@ -193,23 +193,28 @@ num_convert:
 	
 	call strtoll			# Converted integer in %rax
 
-	movq %r13, %rsp
-	pop %rsi
-	pop %r12
+	movq %r13, %rsp			# Restore stack pointer
+	pop %rsi			# Restore the argv pointer
+	pop %r12			# Restore the argv value
 
-#	movq endptr(%rip), %r8         # NERFED
-#	cmpq %r8, %r12                 # NERFED
+
+#	movq endptr(%rip), %r8		# NERFED	
+#	cmpq %r8, %r12			# NERFED		### NERFED ###
+
 	
-	movq endptr(%rip), %r8     # Load endptr into %r8                         # NEW TEST CODE
-	movb (%r8), %r9b           # Load the byte pointed to by endptr
-	cmpb $0, %r9b              # Is it the null terminator?
+	movq endptr(%rip), %r8		# Load endptr into %r8                         # NEW TEST CODE
+	movb (%r8), %r9b		# Load the byte pointed to by endptr
+	cmpb $0, %r9b			# Confirm that it is the null pointer
 
-#	jne parse_error			# NERFED FOR NOW
+	jne parse_error			# If endptr is not null, token wasn't fully consumed by strtoll (invalid number)
 
-	jmp test_num_conversion
 
-operation_add:                 /* A test of the emergency operation_add system */
-	movq $6, %rdi        # exit code 6 = "matched +"
+	jmp test_num_conversion						#### TO BE REMOVED ####
+
+
+
+operation_add:			/* A test of the emergency operation_add system */
+	movq $6, %rdi		# exit code 6 = "matched +"
 	call exit
 
 
@@ -237,19 +242,20 @@ test_num_conversion:
 
 
 parse_error:
-mov stderr(%rip), %rdi
-mov $parse_error_fmt, %rsi
-mov progname(%rip), %rdx
-mov %r12, %rcx
+	mov stderr(%rip), %rdi		# Loads the address of the stderr stream into %rdi (1st argument)
+	mov $parse_error_fmt, %rsi	# Loads the address of the format string to %rsi (2nd argument)
+	mov progname(%rip), %rdx	# Loads the program name (stored in progname) in %rdx (3rd argument)
+	mov %r12, %rcx			# Move the token into %rcx (4th argument)
 
-xor %rax, %rax
+	xor %rax, %rax			# Mandatory to zero %rax before a variadic function call.
+	call fprintf			# Call C library's fprintf with the above 4 arguments
 
-call fprintf
-
-
+	jmp exit_with_error		### MIGHT REMOVE LATER
 
 exit_with_error:
 
+	movq $EXIT_ERROR, %rdi		# Exit code 1 for error
+	call exit	 		# Calls the C library standard exit command
 
 
 
