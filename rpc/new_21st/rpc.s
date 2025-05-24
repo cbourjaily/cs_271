@@ -109,6 +109,7 @@ pop %r12		# Restore argv value
 cmp $0, %rax
 je operation_add
 
+
 sub_compare:
 /* Reusing the logic from add_compare */ 
 
@@ -129,27 +130,67 @@ cmp $0, %rax
 je operation_subtract
 
 
+multiply_compare:
+/* Reusing the logic from add_compare */ 
+
+push %r12		# Save the value of argv (current token) on the stack
+push %rsi		# Save argv pointer
+movq %rsp, %r13		# Move rsp into a free callee-saved register 
+
+andq $-16, %rsp		# Realign rsp; -16 = 0xfffffffffffffff0 
+
+leaq op_multiply(%rip), %rdi	# Loading the 1st argument (op_sub) for strcmp 
+mov %r12, %rsi			# load the 2nd argument (current token) into %rsi 
+call strcmp			# The result is in %rax
+
+movq %r13, %rsp		# Restore stack pointer 
+pop %rsi		# Restore the argv pointer 
+pop %r12		# Restore argv value
+cmp $0, %rax
+je operation_multiply
 
 
+divide_compare:
+/* Reusing the logic from add_compare */ 
+
+push %r12		# Save the value of argv (current token) on the stack
+push %rsi		# Save argv pointer
+movq %rsp, %r13		# Move rsp into a free callee-saved register 
+
+andq $-16, %rsp		# Realign rsp; -16 = 0xfffffffffffffff0 
+
+leaq op_divide(%rip), %rdi	# Loading the 1st argument (op_sub) for strcmp 
+mov %r12, %rsi			# load the 2nd argument (current token) into %rsi 
+call strcmp			# The result is in %rax
+
+movq %r13, %rsp		# Restore stack pointer 
+pop %rsi		# Restore the argv pointer 
+pop %r12		# Restore argv value
+cmp $0, %rax
+je operation_divide
 
 
 operation_add:                 /* A test of the emergency operation_add system */
-	movq $7, %rdi        # exit code 7 = "matched +"
+	movq $6, %rdi        # exit code 6 = "matched +"
 	call exit
 
 
 
-operation_subtract:		/* A test of the sub_compare */
+operation_subtract:		/* A test of sub_compare */
+	mov $7, %rdi		# exit code 7 = "matched -"
+	call exit
+
+
+
+operation_multiply:		/* A test of multiply_compare */
 	mov $8, %rdi		# exit code 8 = "matched -"
 	call exit
 
 
 
-operation_multiply:
-
-
-
-operation_divide:
+operation_divide:		/* A test of divide_compare */
+	mov $9, %rdi		# exit code 9 = "matched -"
+	call exit
 
 
 
