@@ -189,7 +189,8 @@ divide_compare:
 	pop %r12			# Restore argv value
 	cmp $0, %rax
 	je operation_divide
-
+	
+	jmp num_convert
 
 num_convert:
 	
