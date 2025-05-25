@@ -18,7 +18,7 @@ reduction_error_operator:
 	/* Format string for reduction errors: not enough operators */
 	.asciz "%s: reduction error: not enough operators\n"
 
-divde_by_zero_error:
+divide_by_zero_error:
 	/* Format string for division by zero is undefined. */
 	.asciz "%s: division by zero is undefined."
 
@@ -234,7 +234,7 @@ operation_add:
 	/* Check for the presence of at least 16 bytes (2 values) on the stack */
 	leaq -16(%rbp), %r10		# %r10: caller-saved (scratch) register. Gets address 16 bytes below base pointer (%rbp)
 	cmpq %r10, %rsp			# Compares the current stack pointer (%rsp) to computed address.
-	jle reduction_error_operand	# If %rsp >= %r10, there are fewer than two 8-byte values on the stack -> reduction_error.
+	jle reduction_err_operand	# If %rsp >= %r10, there are fewer than two 8-byte values on the stack -> reduction_error.
 
 	/* Perform addition operation */
 	popq %r11			# Pop the second operand into %r11
@@ -249,7 +249,7 @@ operation_subtract:
 	/* Check for the presence of at least 16 bytes (2 values) on the stack */
 	leaq -16(%rbp), %r10		# %r10: caller-saved (scratch) register. Gets address 16 bytes below base pointer (%rbp)
 	cmpq %r10, %rsp			# Compares the current stack pointer (%rsp) to computed address.
-	jle reduction_error_operand	# If %rsp >= %r10, there are fewer than two 8-byte values on the stack -> reduction_error.
+	jle reduction_err_operand	# If %rsp >= %r10, there are fewer than two 8-byte values on the stack -> reduction_error.
 
 	/* Perform subtraction operation */
 	popq %r11			# Second operand in %r11 (subtrahend)
@@ -264,7 +264,7 @@ operation_multiply:
 	/* Check for the presence of at least 16 bytes (2 values) on the stack */
 	leaq -16(%rbp), %r10		# %r10: caller-saved (scratch) register. Gets address 16 bytes below base pointer (%rbp)
 	cmpq %r10, %rsp			# Compares the current stack pointer (%rsp) to computed address.
-	jle reduction_error_operand	# If %rsp >= %r10, there are fewer than two 8-byte values on the stack -> reduction_error.
+	jle reduction_err_operand	# If %rsp >= %r10, there are fewer than two 8-byte values on the stack -> reduction_error.
 
 	/* Perform multiplication operation */
 	popq %r11			# Pop the second operand into %r11
@@ -280,7 +280,7 @@ operation_divide:
 	/* Check for the presence of at least 16 bytes (2 values) on the stack */
 	leaq -16(%rbp), %r10		# %r10: caller-saved (scratch) register. Gets address 16 bytes below base pointer (%rbp)
 	cmpq %r10, %rsp			# Compares the current stack pointer (%rsp) to computed address.
-	jle reduction_error_operand	# If %rsp >= %r10, there are fewer than two 8-byte values on the stack -> reduction_error.
+	jle reduction_err_operand	# If %rsp >= %r10, there are fewer than two 8-byte values on the stack -> reduction_error.
 
 	/* Perform the division operation */
 	popq %r11			# Divisor (second operand) in %rax
@@ -288,7 +288,7 @@ operation_divide:
 	cqto				# sign-extend %rax into %rdx
 
 	cmpq $0, %r11
-	je division_by_zero_error	# Error for division by zero
+	je divide_by_zero		# Error for division by zero
 
 	idivq %r11			# Signed division: (%rdx:%rax) / %r11 -> %rax
 	pushq %rax			# Push the result back on the stack
@@ -296,9 +296,9 @@ operation_divide:
 	jmp parsing_loop		# Continue parsing the next token
 
 
-divde_by_zero_error:
+divide_by_zero:
 	mov stderr(%rip), %rdi		# Loads the address of the stderr stream into %rdi (1st argument)
-	mov $divde_by_zero_error, %rsi	# Loads the address of the format string to %rsi (2nd argument)
+	mov $divide_by_zero_error, %rsi	# Loads the address of the format string to %rsi (2nd argument)
 	mov progname(%rip), %rdx	# Loads the program name (stored in progname) in %rdx (3rd argument)
 	mov %r12, %rcx			# Move the token into %rcx (4th argument)
 
@@ -309,22 +309,22 @@ divde_by_zero_error:
 
 validate_stack:
 	cmpq %rsp, %r12				# Comparing the current top of the stack, %rsp, to the original base of the operand stack (%r12)
-	jne reduction_error_operator		# If they are not equal, more than one value remains - reduction error.
+	jne reduction_err_operator		# If they are not equal, more than one value remains - reduction error.
 	jmp print_result			# Otherwise, exactly one value remains - print the final result
 
-reduction_error_operator:
-        mov stderr(%rip), %rdi                  # Loads the address of the stderr stream into %rdi (1st argument)
-        mov $reduction_error_operand, %rsi      # Loads the address of the format string to %rsi (2nd argument)
-        mov progname(%rip), %rdx                # Loads the program name (stored in progname) in %rdx (3rd argument)
-        mov %r12, %rcx                          # Move the token into %rcx (4th argument)
+reduction_err_operator:
+        mov stderr(%rip), %rdi			# Loads the address of the stderr stream into %rdi (1st argument)
+        mov $reduction_error_operator, %rsi	# Loads the address of the format string to %rsi (2nd argument)
+        mov progname(%rip), %rdx		# Loads the program name (stored in progname) in %rdx (3rd argument)
+        mov %r12, %rcx				# Move the token into %rcx (4th argument)
 
-        xor %rax, %rax                          # Mandatory to zero %rax before a variadic function call.
-        call fprintf                            # Call C library's fprintf with the above 4 arguments
+        xor %rax, %rax				# Mandatory to zero %rax before a variadic function call.
+        call fprintf				# Call C library's fprintf with the above 4 arguments
 
         jmp exit_with_error
 
 
-reduction_error_operand:
+reduction_err_operand:
         mov stderr(%rip), %rdi			# Loads the address of the stderr stream into %rdi (1st argument)
         mov $reduction_error_operand, %rsi	# Loads the address of the format string to %rsi (2nd argument)
         mov progname(%rip), %rdx		# Loads the program name (stored in progname) in %rdx (3rd argument)
