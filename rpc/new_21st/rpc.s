@@ -261,7 +261,7 @@ operation_subtract:
 
 operation_multiply:
 	/* Check for the presence of at least 16 bytes (2 values) on the stack */
-	leaq -16(%14), %r10		# %r10: caller-saved (scratch) register. Gets address 16 bytes below base pointer (%rbp)
+	leaq -16(%r14), %r10		# %r10: caller-saved (scratch) register. Gets address 16 bytes below base pointer (%rbp)
 	cmpq %rsp, %r10			# Compares the current stack pointer (%rsp) to computed address.
 	ja reduction_err_operand	# If %rsp >= %r10, there are fewer than two 8-byte values on the stack -> reduction_error.
 
@@ -313,7 +313,7 @@ divide_by_zero:
 
 reduction_err_operator:
         movq stderr(%rip), %rdi			# Loads the address of the stderr stream into %rdi (1st argument)
-        movq $reduction_error_operator, %rsi	# Loads the address of the format string to %rsi (2nd argument)
+        movq $reduction_error_operand, %rsi	# Loads the address of the format string to %rsi (2nd argument)			###### FOR CONFORMITY WITH TESTS
         movq progname(%rip), %rdx		# Loads the program name (stored in progname) in %rdx (3rd argument)
 #        movq %r12, %rcx				# Move the token into %rcx (4th argument)			######
 
@@ -324,7 +324,7 @@ reduction_err_operator:
 
 reduction_err_operand:
         movq stderr(%rip), %rdi			# Loads the address of the stderr stream into %rdi (1st argument)
-        movq $reduction_error_operand, %rsi	# Loads the address of the format string to %rsi (2nd argument)
+        movq $reduction_error_operator, %rsi	# Loads the address of the format string to %rsi (2nd argument)			#### WE HAVE SWITCHED THE VARIABLE ####
         movq progname(%rip), %rdx		# Loads the program name (stored in progname) in %rdx (3rd argument)
 #        movq %r12, %rcx				# Move the token into %rcx (4th argument)			######
 
