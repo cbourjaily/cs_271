@@ -33,10 +33,20 @@ endptr:
 	.quad 0					# EXPERIMENTAL GLOBAL VARIABLE
 
 
-/* === Register Calling Convention Notes === */
+/* === Register Notes === */
 
-# Convention: %r10 is used to preserve %rsp across stack alignment boundaries
+
+/* Caller-saved: %rax, %rcx, %rdx, %rsi, %rdi, %r8–%r11 */
+/* Callee-saved: %rbx, %rbp, %r12–%r15 */
+/* Integer/pointer argument registers: %rdi, %rsi, %rdx, %rcx, %r8, %r9 */
+
+
+# %r12 is the primary working register for argv[i], passed through the parsing loop.
+
+# %r13 is used to preserve %rsp across stack alignment boundaries
 # before calling variadic functions or those requiring 16-byte alignment.
+
+# % Used to hold argc
 
 
 /* According to the System V ABI, the stack is supposed to be aligned to a multiple of */
@@ -71,18 +81,12 @@ endptr:
 .section .text
 .globl main
 .type main, @function
-
-/* Caller-saved: %rax, %rcx, %rdx, %rsi, %rdi, %r8–%r11 */
-/* Callee-saved: %rbx, %rbp, %r12–%r15 */
-/* Integer/pointer argument registers: %rdi, %rsi, %rdx, %rcx, %r8, %r9 */
-/* argc is in %rdi. argv is in %rsi. */
-
 main:
-	# Checks if there is more than 1 argument in %rdi.
-	cmp $1, %rdi
-	# If only one arg, it's just the file name. Exit program.
-	jle exit_with_success			
+	/* argc is in %rdi. argv is in %rsi. */
 
+	cmp $1, %rdi			# Checks if there is more than 1 argument in %rdi.
+	jle exit_with_success		# If only one arg, it's just the file name. Exit program.
+		
 	movq (%rsi), %rax		# Load argv[0] (program name) to %rax
 	movq %rax, progname(%rip)	# Save to global variable
 	xor %rax, %rax			
@@ -219,40 +223,84 @@ num_convert:
 
 
 
-operation_add:			/* A test of the emergency operation_add system */
-	movq $6, %rdi		# exit code 6 = "matched +"
-	call exit
+/* The next four sections check the stack to confirm there are at least two values. If not, it is treated as a reduction error.
+If so, they pop the first two values performs the relavent operation, and returns the sum to the stack. */
+
+operation_add:
+
+	/* Check for the presence of at least 16 bytes (2 values) on the stack */
+	
+	leaq -16(%rbp), %r10		# %r10: caller-saved (scratch) register. Gets address 16 bytes below base pointer (%rbp)
+	cmpq %r10, %rsp			# Compares the current stack pointer (%rsp) to computed address.
+	jle reduction_error		# If %rsp >= %r10, there are fewer than two 8-byte values on the stack -> reduction_error.
+
+	/* Perform addition operation */
+
+	popq %r11			# Pop the second operand into %r11
+	popq %rax			# Pop the first operand into %rax
+	addq %r11, %rax			# Add the two values, result is in %rax
+	pushq %rax			# Push the result back on the stack
+
+	jmp parsing_loop		# Continue parsing the next token
+
+
+operation_subtract:
+
+	/* Check for the presence of at least 16 bytes (2 values) on the stack */
+	
+	leaq -16(%rbp), %r10		# %r10: caller-saved (scratch) register. Gets address 16 bytes below base pointer (%rbp)
+	cmpq %r10, %rsp			# Compares the current stack pointer (%rsp) to computed address.
+	jle reduction_error		# If %rsp >= %r10, there are fewer than two 8-byte values on the stack -> reduction_error.
+
+
+	/* Perform subtraction operation */
+
+	popq %r11			# Second operand in %r11 (subtrahend)
+	popq %rax			# First operand in %rax (minuend)
+	subq %r11, %rax			# %rax = %rax - %r10
+	pushq %rax			# Push the result back on the stack
+
+	jmp parsing_loop		# Continue parsing the next token
+
+
+operation_multiply:
+
+	/* Check for the presence of at least 16 bytes (2 values) on the stack */
+	
+	leaq -16(%rbp), %r10		# %r10: caller-saved (scratch) register. Gets address 16 bytes below base pointer (%rbp)
+	cmpq %r10, %rsp			# Compares the current stack pointer (%rsp) to computed address.
+	jle reduction_error		# If %rsp >= %r10, there are fewer than two 8-byte values on the stack -> reduction_error.
+
+
+	/* Perform multiplication operation */
+
+	popq %r11			# Pop the second operand into %r11
+	popq %rax			# Pop the first operand into %rax
+	imulq %r11			# Multiply: %rax = %rax * %r11 (signed multiply)
+	pushq %rax			# Push the result back on the stack
+
+	jmp parsing_loop		# Continue parsing the next token
 
 
 
-/* Next order of business is to get the operation_add up and running.
-And, I need to set up the test for if there is only 1 value on the stack.
+operation_divide:
 
-Also, remember that I need to make sure there are at least 2 values on the stack when he operation gets called.
-
-Remember the tip from the notes, about subtracting 16 in order to check for 2 integers. */ 
-
-
-operation_subtract:		/* A test of sub_compare */
-	mov $7, %rdi		# exit code 7 = "matched -"
-	call exit
+	/* Check for the presence of at least 16 bytes (2 values) on the stack */
+	
+	leaq -16(%rbp), %r10		# %r10: caller-saved (scratch) register. Gets address 16 bytes below base pointer (%rbp)
+	cmpq %r10, %rsp			# Compares the current stack pointer (%rsp) to computed address.
+	jle reduction_error		# If %rsp >= %r10, there are fewer than two 8-byte values on the stack -> reduction_error.
 
 
+	/* Perform the division operation */
 
-operation_multiply:		/* A test of multiply_compare */
-	mov $8, %rdi		# exit code 8 = "matched -"
-	call exit
+	popq %rax			# Pop the first operand into %rax
+	popq %r11			# Pop the second operand into %r10
+	addq %r11, %rax			# Add the two values, result is in %rax
+	pushq %rax			# Push the result back on the stack
 
+	jmp parsing_loop		# Continue parsing the next token
 
-
-operation_divide:		/* A test of divide_compare */
-	mov $9, %rdi		# exit code 9 = "matched -"
-	call exit
-
-
-#test_num_conversion:
-#	movq %rax, %rdi				#### JUNK JUNK ####
-#	call exit
 
 
 parse_error:
@@ -265,6 +313,7 @@ parse_error:
 	call fprintf			# Call C library's fprintf with the above 4 arguments
 
 	jmp exit_with_error		### MIGHT REMOVE LATER
+
 
 exit_with_error:
 
