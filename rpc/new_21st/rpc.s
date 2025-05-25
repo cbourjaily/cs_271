@@ -87,8 +87,16 @@ endptr:
 .globl main
 .type main, @function
 main:
-	/* argc is in %rdi. argv is in %rsi. */
+	pushq %rbp
+	movq %rsp, %rbp
+	pushq %r12
+	pushq %r13
+	pushq %r14		# Save original stack pointer here
 
+	# Save initial stack pointer for validation
+	movq %rsp, %r14		
+
+	# argc is in %rdi, argv is in %rsi.
 	cmp $1, %rdi			# Checks if there is more than 1 argument in %rdi.
 	jle exit_with_success		# If only one arg, it's just the file name. Exit program.
 		
@@ -190,12 +198,12 @@ divide_compare:
 	cmp $0, %rax
 	je operation_divide
 	
-	jmp num_convert
+	jmp num_convert			## Could feasibly comment out to save a jump
 
 num_convert:
 	
-        push %r12               	# Save the value of argv (current token) on the stack
-        push %rsi               	# Save argv pointer
+        pushq %r12               	# Save the value of argv (current token) on the stack
+        pushq %rsi               	# Save argv pointer
 	movq %rsp, %r13			# Move %rsp into a free callee-saved register
 
 	andq $-16, %rsp			# Realign %rsp; -16 = 0xfffffffffffffff0 
@@ -204,28 +212,20 @@ num_convert:
 	leaq endptr(%rip), %rsi		# Set endptr for %rsi (second argument
 	xor %rdx, %rdx			# Set %rdx to zero
 	
-	call strtoll			# Converted integer in %rax
+	call strtoll			# Converted integer into %rax
 
 	movq %r13, %rsp			# Restore stack pointer
-	pop %rsi			# Restore the argv pointer
-	pop %r12			# Restore the argv value
+	popq %rsi			# Restore the argv pointer
+	popq %r12			# Restore the argv value
 
-
-#	movq endptr(%rip), %r8		# NERFED	
-#	cmpq %r8, %r12			# NERFED		### NERFED ###
-
-	
-	movq endptr(%rip), %r8		# Load endptr into %r8                         # NEW TEST CODE
+	movq endptr(%rip), %r8		# Load endptr into %r8
 	movb (%r8), %r9b		# Load the byte pointed to by endptr
 	cmpb $0, %r9b			# Confirm that it is the null pointer
 
 	jne parse_error			# If endptr is not null, token wasn't fully consumed by strtoll (invalid number)
 
-	push %rax			# Push the converted integer to the stack
+	pushq %rax			# Push the converted integer to the stack
 	jmp parsing_loop		
-
-#	jmp test_num_conversion						#### TO BE REMOVED ####
-
 
 
 /* The next four sections check the stack to confirm there are at least two values. If not, it is treated as a reduction error.
@@ -233,55 +233,52 @@ If so, they pop the first two values performs the relavent operation, and return
 
 operation_add:
 	/* Check for the presence of at least 16 bytes (2 values) on the stack */
-	leaq -16(%rbp), %r10		# %r10: caller-saved (scratch) register. Gets address 16 bytes below base pointer (%rbp)
-	cmpq %r10, %rsp			# Compares the current stack pointer (%rsp) to computed address.
-	jle reduction_err_operand	# If %rsp >= %r10, there are fewer than two 8-byte values on the stack -> reduction_error.
+	leaq -16(%r14), %r10		# %r10: caller-saved (scratch) register. Gets address 16 bytes below base pointer (%rbp)
+	cmpq %rsp, %r10			# Compares the current stack pointer (%rsp) to computed address.
+	ja reduction_err_operand	# If %rsp >= %r10, there are fewer than two 8-byte values on the stack -> reduction_error.
 
 	/* Perform addition operation */
 	popq %r11			# Pop the second operand into %r11
 	popq %rax			# Pop the first operand into %rax
 	addq %r11, %rax			# Add the two values, result is in %rax
 	pushq %rax			# Push the result back on the stack
-
 	jmp parsing_loop		# Continue parsing the next token
 
 
 operation_subtract:
 	/* Check for the presence of at least 16 bytes (2 values) on the stack */
-	leaq -16(%rbp), %r10		# %r10: caller-saved (scratch) register. Gets address 16 bytes below base pointer (%rbp)
-	cmpq %r10, %rsp			# Compares the current stack pointer (%rsp) to computed address.
-	jle reduction_err_operand	# If %rsp >= %r10, there are fewer than two 8-byte values on the stack -> reduction_error.
+	leaq -16(%r14), %r10		# %r10: caller-saved (scratch) register. Gets address 16 bytes below base pointer (%rbp)
+	cmpq %rsp, %r10			# Compares the current stack pointer (%rsp) to computed address.
+	ja reduction_err_operand	# If %rsp >= %r10, there are fewer than two 8-byte values on the stack -> reduction_error.
 
 	/* Perform subtraction operation */
 	popq %r11			# Second operand in %r11 (subtrahend)
 	popq %rax			# First operand in %rax (minuend)
 	subq %r11, %rax			# %rax = %rax - %r10
 	pushq %rax			# Push the result back on the stack
-
 	jmp parsing_loop		# Continue parsing the next token
 
 
 operation_multiply:
 	/* Check for the presence of at least 16 bytes (2 values) on the stack */
-	leaq -16(%rbp), %r10		# %r10: caller-saved (scratch) register. Gets address 16 bytes below base pointer (%rbp)
-	cmpq %r10, %rsp			# Compares the current stack pointer (%rsp) to computed address.
-	jle reduction_err_operand	# If %rsp >= %r10, there are fewer than two 8-byte values on the stack -> reduction_error.
+	leaq -16(%14), %r10		# %r10: caller-saved (scratch) register. Gets address 16 bytes below base pointer (%rbp)
+	cmpq %rsp, %r10			# Compares the current stack pointer (%rsp) to computed address.
+	ja reduction_err_operand	# If %rsp >= %r10, there are fewer than two 8-byte values on the stack -> reduction_error.
 
 	/* Perform multiplication operation */
 	popq %r11			# Pop the second operand into %r11
 	popq %rax			# Pop the first operand into %rax
 	imulq %r11			# Multiply: %rax = %rax * %r11 (signed multiply)
 	pushq %rax			# Push the result back on the stack
-
 	jmp parsing_loop		# Continue parsing the next token
 
 
 
 operation_divide:
 	/* Check for the presence of at least 16 bytes (2 values) on the stack */
-	leaq -16(%rbp), %r10		# %r10: caller-saved (scratch) register. Gets address 16 bytes below base pointer (%rbp)
-	cmpq %r10, %rsp			# Compares the current stack pointer (%rsp) to computed address.
-	jle reduction_err_operand	# If %rsp >= %r10, there are fewer than two 8-byte values on the stack -> reduction_error.
+	leaq -16(%r14), %r10		# %r10: caller-saved (scratch) register. Gets address 16 bytes below base pointer (%rbp)
+	cmpq %rsp, %r10			# Compares the current stack pointer (%rsp) to computed address.
+	ja reduction_err_operand	# If %rsp >= %r10, there are fewer than two 8-byte values on the stack -> reduction_error.
 
 	/* Perform the division operation */
 	popq %r11			# Divisor (second operand) in %rax
@@ -293,66 +290,58 @@ operation_divide:
 
 	idivq %r11			# Signed division: (%rdx:%rax) / %r11 -> %rax
 	pushq %rax			# Push the result back on the stack
-
 	jmp parsing_loop		# Continue parsing the next token
 
 
+validate_stack:
+	leaq -8(%r14), %r10			# There should be exactly 1 item left (8 bytes pushed)
+	cmpq %r10, %rsp
+	jne reduction_err_operator
+	jmp print_result
+
+
 divide_by_zero:
-	mov stderr(%rip), %rdi		# Loads the address of the stderr stream into %rdi (1st argument)
-	mov $divide_by_zero_error, %rsi	# Loads the address of the format string to %rsi (2nd argument)
-	mov progname(%rip), %rdx	# Loads the program name (stored in progname) in %rdx (3rd argument)
-	mov %r12, %rcx			# Move the token into %rcx (4th argument)
+	movq stderr(%rip), %rdi			# Loads the address of the stderr stream into %rdi (1st argument)
+	movq $divide_by_zero_error, %rsi	# Loads the address of the format string to %rsi (2nd argument)
+	movq progname(%rip), %rdx		# Loads the program name (stored in progname) in %rdx (3rd argument)
+	movq %r12, %rcx				# Move the token into %rcx (4th argument)
 
-	xor %rax, %rax			# Mandatory to zero %rax before a variadic function call.
-	call fprintf			# Call C library's fprintf with the above 4 arguments
-
+	xor %rax, %rax				# Mandatory to zero %rax before a variadic function call.
+	call fprintf				# Call C library's fprintf with the above 4 arguments
 	jmp exit_with_error
 
-validate_stack:
-	cmpq %rsp, %r12				# Comparing the current top of the stack, %rsp, to the original base of the operand stack (%r12)
-	jne reduction_err_operator		# If they are not equal, more than one value remains - reduction error.
-	jmp print_result			# Otherwise, exactly one value remains - print the final result
 
 reduction_err_operator:
-        mov stderr(%rip), %rdi			# Loads the address of the stderr stream into %rdi (1st argument)
-        mov $reduction_error_operator, %rsi	# Loads the address of the format string to %rsi (2nd argument)
-        mov progname(%rip), %rdx		# Loads the program name (stored in progname) in %rdx (3rd argument)
-        mov %r12, %rcx				# Move the token into %rcx (4th argument)
+        movq stderr(%rip), %rdi			# Loads the address of the stderr stream into %rdi (1st argument)
+        movq $reduction_error_operator, %rsi	# Loads the address of the format string to %rsi (2nd argument)
+        movq progname(%rip), %rdx		# Loads the program name (stored in progname) in %rdx (3rd argument)
+#        movq %r12, %rcx				# Move the token into %rcx (4th argument)			######
 
         xor %rax, %rax				# Mandatory to zero %rax before a variadic function call.
         call fprintf				# Call C library's fprintf with the above 4 arguments
-
         jmp exit_with_error
 
 
 reduction_err_operand:
-        mov stderr(%rip), %rdi			# Loads the address of the stderr stream into %rdi (1st argument)
-        mov $reduction_error_operand, %rsi	# Loads the address of the format string to %rsi (2nd argument)
-        mov progname(%rip), %rdx		# Loads the program name (stored in progname) in %rdx (3rd argument)
-        mov %r12, %rcx				# Move the token into %rcx (4th argument)
+        movq stderr(%rip), %rdi			# Loads the address of the stderr stream into %rdi (1st argument)
+        movq $reduction_error_operand, %rsi	# Loads the address of the format string to %rsi (2nd argument)
+        movq progname(%rip), %rdx		# Loads the program name (stored in progname) in %rdx (3rd argument)
+#        movq %r12, %rcx				# Move the token into %rcx (4th argument)			######
 
         xor %rax, %rax				# Mandatory to zero %rax before a variadic function call.
         call fprintf				# Call C library's fprintf with the above 4 arguments
-
         jmp exit_with_error             
 	
 
 parse_error:
-	mov stderr(%rip), %rdi		# Loads the address of the stderr stream into %rdi (1st argument)
-	mov $parse_error_fmt, %rsi	# Loads the address of the format string to %rsi (2nd argument)
-	mov progname(%rip), %rdx	# Loads the program name (stored in progname) in %rdx (3rd argument)
-	mov %r12, %rcx			# Move the token into %rcx (4th argument).
+	movq stderr(%rip), %rdi		# Loads the address of the stderr stream into %rdi (1st argument)
+	movq $parse_error_fmt, %rsi	# Loads the address of the format string to %rsi (2nd argument)
+	movq progname(%rip), %rdx	# Loads the program name (stored in progname) in %rdx (3rd argument)
+	movq %r12, %rcx			# Move the token into %rcx (4th argument).
 
 	xor %rax, %rax			# Mandatory to zero %rax before a variadic function call.
 	call fprintf			# Call C library's fprintf with the above 4 arguments.
-
 	jmp exit_with_error		# Could feasibly be commented out to save a jump.
-
-
-exit_with_error:
-
-	movq $EXIT_ERROR, %rdi		# Exit code 1 for error
-	call exit	 		# Calls the C library standard exit command
 
 
 print_result:
@@ -362,8 +351,23 @@ print_result:
 	call printf
 	jmp exit_with_success		# Could feasibly be commented out to save a jump.
 
-exit_with_success:
 
+exit_with_error:
+	popq %r14
+	popq %r13
+	popq %r12
+	movq %rbp, %rsp
+	popq %rbp
+	movq $EXIT_ERROR, %rdi		# Exit code 1 for error
+	call exit	 		# Calls the C library standard exit command
+
+
+exit_with_success:
+	popq %r14
+	popq %r13
+	popq %r12
+	movq %rbp, %rsp
+	popq %rbp
         xorq %rdi, %rdi         # Exit code 0 for success
         call exit               # Calls the C library standard exit command
         
