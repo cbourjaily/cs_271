@@ -50,8 +50,10 @@ Result_format:
 
 
 endptr:
-	.quad 0					# EXPERIMENTAL GLOBAL VARIABLE
+	.quad 0					
 
+stack_depth:
+	.skip 8		# Reserve 8 bytes
 
 /* === Register Notes === */
 
@@ -105,6 +107,7 @@ endptr:
 .globl main
 .type main, @function
 main:
+	movq $0, stack_depth(%rip)	# Initialize stack depth	
 	pushq %rbp
 	movq %rsp, %rbp
 	pushq %r12
@@ -240,6 +243,7 @@ num_convert:
 	jne parse_error			# If endptr is not null, token wasn't fully consumed by strtoll (invalid number)
 
 	pushq %rax			# Push the converted integer to the stack
+	incq stack_depth(%rip)		# Increment stack depth
 	jmp parsing_loop		
 
 
@@ -258,6 +262,7 @@ operation_add:
 	popq %rax				# Pop the first operand into %rax
 	addq %r11, %rax				# Add the two values, result is in %rax
 	pushq %rax				# Push the result back on the stack
+	decq stack_depth(%rip)			# Net difference of 1 stack position	
 	jmp parsing_loop			# Continue parsing the next token
 
 
@@ -271,8 +276,9 @@ operation_subtract:
 	/* Perform subtraction operation */
 	popq %r11				# Second operand in %r11 (subtrahend)
 	popq %rax				# First operand in %rax (minuend)
-	subq %r11, %rax				# %rax = %rax - %r10
+	subq %r11, %rax				# %rax = %rax - %r11
 	pushq %rax				# Push the result back on the stack
+        decq stack_depth(%rip)                  # Net difference of 1 stack position    
 	jmp parsing_loop			# Continue parsing the next token
 
 
@@ -288,6 +294,7 @@ operation_multiply:
 	popq %rax				# Pop the first operand into %rax
 	imulq %r11				# Multiply: %rax = %rax * %r11 (signed multiply)
 	pushq %rax				# Push the result back on the stack
+        decq stack_depth(%rip)                  # Net difference of 1 stack position    
 	jmp parsing_loop			# Continue parsing the next token
 
 
@@ -309,6 +316,7 @@ operation_divide:
 
 	idivq %r11				# Signed division: (%rdx:%rax) / %r11 -> %rax
 	pushq %rax				# Push the result back on the stack
+        decq stack_depth(%rip)                  # Net difference of 1 stack position    
 	jmp parsing_loop			# Continue parsing the next token
 
 
