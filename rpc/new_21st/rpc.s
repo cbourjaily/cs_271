@@ -2,6 +2,21 @@
 # 934-315-400
 
 
+# gcc -no-pie -o rpc rpc.s
+
+
+# gcc -no-pie -g -o rpc rpc.s
+
+# gdb -tui ./rpc
+
+
+# gdb ./rpc
+
+# (gdb) break main
+
+# (gdb) run 3 5 +
+
+
 .section .data
 progname:
 	.space 8
@@ -20,7 +35,7 @@ reduction_error_operator:
 
 divide_by_zero_error:
 	/* Format string for division by zero is undefined. */
-	.asciz "%s: division by zero is undefined."
+	.asciz "%s: division by zero is undefined.\n"
 
 
 operator_strings_for_strcmp:
@@ -96,7 +111,8 @@ main:
 	# Save initial stack pointer for validation
 	movq %rsp, %r14		
 
-	# argc is in %rdi, argv is in %rsi.
+	/*argc is in %rdi, argv is in %rsi*/
+
 	cmp $1, %rdi			# Checks if there is more than 1 argument in %rdi.
 	jle exit_with_success		# If only one arg, it's just the file name. Exit program.
 		
@@ -233,9 +249,15 @@ If so, they pop the first two values performs the relavent operation, and return
 
 operation_add:
 	/* Check for the presence of at least 16 bytes (2 values) on the stack */
-	leaq -16(%r14), %r10		# %r10: caller-saved (scratch) register. Gets address 16 bytes below base pointer (%rbp)
-	cmpq %rsp, %r10			# Compares the current stack pointer (%rsp) to computed address.
-	ja reduction_err_operand	# If %rsp >= %r10, there are fewer than two 8-byte values on the stack -> reduction_error.
+	movq %r14, %r10
+	subq %rsp, %r10
+	cmpq $16, %r10
+	jl reduction_err_operand
+
+
+#	leaq -16(%r14), %r10		# %r10: caller-saved (scratch) register. Gets address 16 bytes below base pointer (%rbp)
+#	cmpq %rsp, %r10			# Compares the current stack pointer (%rsp) to computed address.
+#	ja reduction_err_operand	# If %rsp >= %r10, there are fewer than two 8-byte values on the stack -> reduction_error.
 
 	/* Perform addition operation */
 	popq %r11			# Pop the second operand into %r11
@@ -294,10 +316,17 @@ operation_divide:
 
 
 validate_stack:
-	leaq -8(%r14), %r10			# There should be exactly 1 item left (8 bytes pushed)
-	cmpq %r10, %rsp
+	movq %r14, %r10
+	subq %rsp, %r10
+	cmpq $8, %r10
 	jne reduction_err_operator
 	jmp print_result
+
+#	leaq -8(%r14), %r10			# There should be exactly 1 item left (8 bytes pushed)
+#	cmpq %r10, %rsp
+#	jb reduction_err_operator
+#	je print_result
+	
 
 
 divide_by_zero:
@@ -313,7 +342,7 @@ divide_by_zero:
 
 reduction_err_operator:
         movq stderr(%rip), %rdi			# Loads the address of the stderr stream into %rdi (1st argument)
-        movq $reduction_error_operator, %rsi	# Loads the address of the format string to %rsi (2nd argument)			###### FOR CONFORMITY WITH TESTS
+        movq $reduction_error_operator, %rsi	# ioads the address of the format string to %rsi (2nd argument)			###### FOR CONFORMITY WITH TESTS
         movq progname(%rip), %rdx		# Loads the program name (stored in progname) in %rdx (3rd argument)
 #        movq %r12, %rcx				# Move the token into %rcx (4th argument)			######
 
