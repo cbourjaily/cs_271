@@ -16,10 +16,11 @@
 /* --- Register Usage in This Program --- */
 # %r12 — Holds the current argv[i] token throughout the parsing loop
 # %r13 — Used to preserve %rsp when aligning stack for function calls (callee-saved)
-# %r14 — Snapshot of %rsp before any pushes; used for stack validation
+# %r14 — Initial %rsp (stack base); used to compute operand stack depth for validation
 # %r15 — Unused (available for future expansion or debugging)
 # %rbp — Used as frame pointer (standard prologue/epilogue usage)
 # %rsp — Actively manipulated for operand storage (simulates evaluation stack)
+# %rcx — Used for printing the offending token in parse errors
 
 
 /* --- Arithmetic Register Usage --- */
@@ -85,10 +86,6 @@ parsing_loop:
 
 
 add_compare:
-/* Use strcmp to check if the current token is op_plus. If not, move along. If so, jump to perform operation. */
-/* If we identify +, we will jump to an operation_add: Otherwise, the token will proceed. */
-/* Save callee-saved registers and align the stack before the function call */ 
-
 	pushq %r12				# Save the value of argv (current token) on the stack
 	pushq %rsi				# Save argv pointer
 	movq %rsp, %r13				# Move %rsp into a free callee-saved register 
@@ -107,8 +104,6 @@ add_compare:
 
 
 sub_compare:
-/* Reusing the logic from add_compare */ 
-
 	push %r12				# Save the value of argv (current token) on the stack
 	push %rsi				# Save argv pointer
 	movq %rsp, %r13				# Move %rsp into a free callee-saved register 
@@ -127,8 +122,6 @@ sub_compare:
 
 
 multiply_compare:
-/* Reusing the logic from add_compare */ 
-
 	push %r12				# Save the value of argv (current token) on the stack
 	push %rsi				# Save argv pointer
 	movq %rsp, %r13				# Move %rsp into a free callee-saved register 
@@ -147,8 +140,6 @@ multiply_compare:
 
 
 divide_compare:
-/* Reusing the logic from add_compare */ 
-
 	push %r12				# Save the value of argv (current token) on the stack
 	push %rsi				# Save %argv pointer
 	movq %rsp, %r13				# Move %rsp into a free callee-saved register 
@@ -168,7 +159,6 @@ divide_compare:
 	jmp num_convert				# Could feasibly comment out to save a jump
 
 num_convert:
-	
         pushq %r12               		# Save the value of argv (current token) on the stack
         pushq %rsi               		# Save argv pointer
 	movq %rsp, %r13				# Move %rsp into a free callee-saved register
