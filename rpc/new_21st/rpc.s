@@ -366,7 +366,7 @@ divide_by_zero_error:
 	.asciz "%s: division by zero is undefined.\n"
 
 
-/* operator_strings_for_strcmp */
+/* Operator strings for strcmp */
 op_add:		
 	.asciz "+"
 
@@ -380,7 +380,7 @@ op_divide:
 	.asciz "/"
 
         
-Result_format:
+/* Result format */
 	result_fmt:	.asciz "%lld\n"
 
 
