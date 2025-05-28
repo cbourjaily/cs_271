@@ -1,5 +1,29 @@
-# Christopher Vote
-# 934-315-400
+# Author: Christopher Vote (934-315-400)
+
+
+ 
+# * Reverse Polish Notation (RPN) Calculator
+#  
+# * Filename: rpn.s
+# * Description:
+# *   An x86-64 assembly program that parses and evaluates Reverse Polish expressions.
+# *   It uses command-line arguments as input tokens and simulates a computation stack using %rsp.
+# *   Supports +, -, *, / with proper error handling (parse errors, reduction errors, division by zero).
+# 
+# * Highlights:
+# *   - Follows System V AMD64 ABI
+# *   - Uses C library functions: strtoll, strcmp, fprintf, exit
+# *   - Fully PIC-compliant (RIP-relative addressing)
+# *   - Stack is aligned before all function calls
+
+
+# Citation:
+# Among additional sources consulted during the development of this program,
+# I made extensive use of the following reference:
+#  
+# Jonathan Bartlett. *Learn to Program with Assembly: Foundational Learning for New Programmers*.  
+# Bartlett Publishing, 2021. ISBN: 978-1948917043.
+
 
 
 /* === Register Notes === */
@@ -57,7 +81,6 @@
 .globl main
 .type main, @function
 main:
-	movq $0, stack_depth(%rip)		# Initialize stack depth	
 	pushq %rbp	
 	movq %rsp, %rbp
 	pushq %r12				# Save callee-saved registers
@@ -69,7 +92,7 @@ main:
 
 	/*argc is in %rdi, argv is in %rsi*/
 
-	cmp $1, %rdi				# Checks if there is more than 1 argument in %rdi.
+	cmpq $1, %rdi				# Checks if there is more than 1 argument in %rdi.
 	jle exit_with_success			# If only one arg, it's just the file name. Exit program.
 		
 	movq (%rsi), %rax			# Load argv[0] (program name) to %rax
@@ -93,67 +116,67 @@ add_compare:
 	andq $-16, %rsp				# Realign %rsp; -16 = 0xfffffffffffffff0 
 
 	leaq op_add(%rip), %rdi			# Loading the 1st argument (op_add) for strcmp 
-	mov %r12, %rsi				# load the 2nd argument (current token) into %rsi 
+	movq %r12, %rsi				# load the 2nd argument (current token) into %rsi 
 	call strcmp				# The result is in %rax
 
 	movq %r13, %rsp				# Restore stack pointer 
-	pop %rsi				# Restore the argv pointer 
-	pop %r12				# Restore argv value
-	cmp $0, %rax
+	popq %rsi				# Restore the argv pointer 
+	popq %r12				# Restore argv value
+	cmpq $0, %rax
 	je operation_add
 
 
 sub_compare:
-	push %r12				# Save the value of argv (current token) on the stack
-	push %rsi				# Save argv pointer
+	pushq %r12				# Save the value of argv (current token) on the stack
+	pushq %rsi				# Save argv pointer
 	movq %rsp, %r13				# Move %rsp into a free callee-saved register 
 
 	andq $-16, %rsp				# Realign %rsp; -16 = 0xfffffffffffffff0 
 
 	leaq op_sub(%rip), %rdi			# Loading the 1st argument (op_sub) for strcmp 
-	mov %r12, %rsi				# load the 2nd argument (current token) into %rsi 
+	movq %r12, %rsi				# load the 2nd argument (current token) into %rsi 
 	call strcmp				# The result is in %rax
 
 	movq %r13, %rsp				# Restore stack pointer 
-	pop %rsi				# Restore the argv pointer 
-	pop %r12				# Restore argv value
-	cmp $0, %rax
+	popq %rsi				# Restore the argv pointer 
+	popq %r12				# Restore argv value
+	cmpq $0, %rax
 	je operation_subtract
 
 
 multiply_compare:
-	push %r12				# Save the value of argv (current token) on the stack
-	push %rsi				# Save argv pointer
+	pushq %r12				# Save the value of argv (current token) on the stack
+	pushq %rsi				# Save argv pointer
 	movq %rsp, %r13				# Move %rsp into a free callee-saved register 
 
 	andq $-16, %rsp				# Realign %rsp; -16 = 0xfffffffffffffff0 
 
 	leaq op_multiply(%rip), %rdi		# Loading the 1st argument (op_sub) for strcmp 
-	mov %r12, %rsi				# load the 2nd argument (current token) into %rsi 
+	movq %r12, %rsi				# load the 2nd argument (current token) into %rsi 
 	call strcmp				# The result is in %rax
 
 	movq %r13, %rsp				# Restore stack pointer 
-	pop %rsi				# Restore the argv pointer 
-	pop %r12				# Restore argv value
-	cmp $0, %rax
+	popq %rsi				# Restore the argv pointer 
+	popq %r12				# Restore argv value
+	cmpq $0, %rax
 	je operation_multiply
 
 
 divide_compare:
-	push %r12				# Save the value of argv (current token) on the stack
-	push %rsi				# Save %argv pointer
+	pushq %r12				# Save the value of argv (current token) on the stack
+	pushq %rsi				# Save %argv pointer
 	movq %rsp, %r13				# Move %rsp into a free callee-saved register 
 
 	andq $-16, %rsp				# Realign %rsp; -16 = 0xfffffffffffffff0 
 
 	leaq op_divide(%rip), %rdi		# Loading the 1st argument (op_sub) for strcmp 
-	mov %r12, %rsi				# load the 2nd argument (current token) into %rsi 
+	movq %r12, %rsi				# load the 2nd argument (current token) into %rsi 
 	call strcmp				# The result is in %rax
 
 	movq %r13, %rsp				# Restore stack pointer 
-	pop %rsi				# Restore the argv pointer 
-	pop %r12				# Restore argv value
-	cmp $0, %rax
+	popq %rsi				# Restore the argv pointer 
+	popq %r12				# Restore argv value
+	cmpq $0, %rax
 	je operation_divide
 	
 	jmp num_convert				# Could feasibly comment out to save a jump
@@ -182,7 +205,6 @@ num_convert:
 	jne parse_error				# If endptr is not null, token wasn't fully consumed by strtoll (invalid number)
 
 	pushq %rax				# Push the converted integer to the stack
-	incq stack_depth(%rip)			# Increment stack depth
 	jmp parsing_loop		
 
 
@@ -201,7 +223,6 @@ operation_add:
 	popq %rax				# Pop the first operand into %rax
 	addq %r11, %rax				# Add the two values, result is in %rax
 	pushq %rax				# Push the result back on the stack
-	decq stack_depth(%rip)			# Net difference of 1 stack position	
 	jmp parsing_loop			# Continue parsing the next token
 
 
@@ -217,7 +238,6 @@ operation_subtract:
 	popq %rax				# First operand in %rax (minuend)
 	subq %r11, %rax				# %rax = %rax - %r11
 	pushq %rax				# Push the result back on the stack
-        decq stack_depth(%rip)                  # Net difference of 1 stack position    
 	jmp parsing_loop			# Continue parsing the next token
 
 
@@ -233,7 +253,6 @@ operation_multiply:
 	popq %rax				# Pop the first operand into %rax
 	imulq %r11				# Multiply: %rax = %rax * %r11 (signed multiply)
 	pushq %rax				# Push the result back on the stack
-        decq stack_depth(%rip)                  # Net difference of 1 stack position    
 	jmp parsing_loop			# Continue parsing the next token
 
 
@@ -255,7 +274,6 @@ operation_divide:
 
 	idivq %r11				# Signed division: (%rdx:%rax) / %r11 -> %rax
 	pushq %rax				# Push the result back on the stack
-        decq stack_depth(%rip)                  # Net difference of 1 stack position    
 	jmp parsing_loop			# Continue parsing the next token
 
 
@@ -344,10 +362,6 @@ progname:
 endptr:
 	.quad 0					
 
-stack_depth:
-	.skip 8		# Reserve 8 bytes
-
-
 .section .rodata
 parse_error_fmt:
 	/* Format string for parse errors */
@@ -367,24 +381,18 @@ divide_by_zero_error:
 
 
 /* Operator strings for strcmp */
-op_add:		
+op_add:
 	.asciz "+"
 
-op_sub:		
+op_sub:
 	.asciz "-"
 
-op_multiply:	
+op_multiply:
 	.asciz "*"
 
-op_divide:	
+op_divide:
 	.asciz "/"
 
-        
+
 /* Result format */
 	result_fmt:	.asciz "%lld\n"
-
-
-       
-
-
-
